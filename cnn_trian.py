@@ -7,153 +7,149 @@ Original file is located at
     https://colab.research.google.com/drive/18UNtFpiHL84_eQBdNjBynn5kTtK2AoYr
 """
 
-from google.colab import drive
-drive.mount('/content/drive')
+# use this code if you are using google colab
+# from google.colab import drive
+# drive.mount('/content/drive')
 
+
+# %tensorflow_version 2.x
 from numpy import unique, argmax
 from tensorflow.keras.datasets.mnist import load_data
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D 
-from tensorflow.keras.layers import MaxPool2D
-from tensorflow.keras.layers import Dense
-from tensorflow.keras.layers import Flatten
-from tensorflow.keras.layers import Dropout
-from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout, Activation
 from tensorflow.keras.utils import plot_model
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.layers.experimental.preprocessing import Rescaling
+from tensorflow.keras import layers
+import tensorflow as tf
 from matplotlib import pyplot
 import matplotlib.pyplot as plt
 import numpy as np
+import timeit
 import cv2 
 import os
 import random
 import pickle
-
-#os.chdir("/content/drive/")
-#!ls
-
-DATADIR = "/content/drive/MyDrive/inaturalist_12K/train"
-Categories = ['Amphibia','Animalia','Arachnida','Aves','Fungi','Insecta','Mammalia','Mollusca','Plantae','Reptilia']
-
-training_data = []
-img_size = 100
-
-def create_training_data():
-
-  exceptCount = 0;
-  for cat in Categories:
-    path = os.path.join(DATADIR,cat)
-    class_num = Categories.index(cat)
-
-    for img in os.listdir(path):
-      #image = cv2.imread(os.path.join(path,img),cv2.IMREAD_GRAYSCALE)
-
-      try:
-        image = cv2.imread(os.path.join(path,img)) # reading Color image
-        image_resized = cv2.resize(image, (img_size,img_size))
-        training_data.append([image_resized,class_num])
-      except:
-        exceptCount += 1
-
-      
-create_training_data()
-
-# Random shuffling of data
-random.shuffle(training_data)
-
-#for sample in training_data[:10]:
-#  print(sample[1])
-
-features = []
-labels   = []
-
-for x,y in training_data:
-  features.append(x)
-  labels.append(y)
-
-features = np.array(features).reshape(-1,img_size,img_size,3)
+from PIL import Image
 
 
-pickle_out = open("/content/drive/MyDrive/inaturalist_12K/features.pickle","wb")
-pickle.dump(features,pickle_out)
-pickle_out.close()
-
-pickle_out = open("/content/drive/MyDrive/inaturalist_12K/labels.pickle","wb")
-pickle.dump(labels,pickle_out)
-pickle_out.close()
-
-
-'''
-
-Work in progress
-
-'''
+device_name = tf.test.gpu_device_name()
+if device_name != '/device:GPU:0':
+  print(
+      '\n\nThis error states that this notebook is not '
+      'configured to use a GPU. Change this in the notebook Settings via the Runtime type or  '
+      'command palette (cmd/ctrl-shift-P) or the Edit menu .\n\n')
+  raise SystemError('GPU device not found')
 
 
+# Code to check the cpu and gpu speeds 
+# def cpu():
+#   with tf.device('/cpu:0'):
+#     ranImg = tf.random.normal((100, 100, 100, 3))
+#     nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
+#     return tf.math.reduce_sum(nett)
+
+# def gpu():
+#   with tf.device('/device:GPU:0'):
+#     ranImg = tf.random.normal((100, 100, 100, 3))
+#     nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
+#     return tf.math.reduce_sum(nett)
+
+# # We run each op once to warm up; see: https://stackoverflow.com/a/45067900
+# cpu()
+# gpu()
+
+# # Run the op several times.
+# print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
+#       '(batch x height x width x channel). Sum of ten runs.')
+# print('CPU (s):')
+# cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
+# print(cpu_time)
+# print('GPU (s):')
+# gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
+# print(gpu_time)
+# print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
+
+path = os.getcwd()
+print(path)
+train_dir =path + "/inaturalist_12K/train"
+val_dir = path + "/inaturalist_12K/val"
+
+trainIt = tf.keras.preprocessing.image_dataset_from_directory(
+                      directory = train_dir,
+                      labels = 'inferred',  
+                      label_mode = 'categorical',
+                      color_mode = 'rgb',
+                      batch_size = 32,
+                      image_size = (256, 256),
+                      shuffle = True,
+                      seed = 17,
+                      validation_split = 0.2,
+                      subset = 'training')
+
+valIt = tf.keras.preprocessing.image_dataset_from_directory(
+                      directory = val_dir,
+                      labels = 'inferred',  
+                      label_mode = 'categorical',
+                      color_mode = 'rgb',
+                      batch_size = 32,
+                      image_size = (256, 256),
+                      shuffle = True,
+                      seed = 17,
+                      validation_split = 0.2,
+                      subset = 'validation')
+
+# Retaining 25 percent of train and validation data and discarding the rest
+train_data = trainIt.take(int(0.25*len(trainIt)))
+val_data = valIt.take(int(0.25*len(valIt)))
+
+print('Train data and Val Data has been set, Now lets use GPU and Define our Model')
+
+def train():
+  with tf.device('/device:GPU:0'):
+
+    # Used this in out previous trails of framing the model, Commeting them for the future    
+    # inputs = tf.keras.Input(shape = (256, 256, 3))
+    # x = Rescaling(scale = 1.0/255)(inputs)
+
+    fOrg = 0.5
+    firstLayerFliterCount = 64
+    conv_layers = 5
+    activation = 'relu'
+    denseSize = 32
+    optimizer = 'adam'
+    num_epochs = 50
+    filterSize = [int(firstLayerFliterCount*(fOrg**layer_num)) for layer_num in range(conv_layers)]
+    kernelSize = 3
+
+    #Defining Model Architecture
+
+    model = Sequential()
+
+    # Apply some convolution and pooling layers
+    for layer_num in range(conv_layers):
+        model.add(Conv2D(filterSize[layer_num], (kernelSize, kernelSize), input_shape=(256,256,3)))
+        model.add(Activation(activation))
+        model.add(MaxPool2D(pool_size=(2, 2)))           
 
 
+    #dense layer
+    model.add(Flatten())
+    model.add(Dense(denseSize,activation=activation))
+
+    #output layer
+    model.add(Dense(10,activation='softmax'))
+
+    print(model.summary())
+
+    model.compile(optimizer=optimizer,
+                  loss = tf.keras.losses.CategoricalCrossentropy(name = 'loss'),
+                  metrics = [tf.keras.metrics.CategoricalAccuracy(name = 'acc')])
+    model_hist = model.fit(train_data, epochs = num_epochs,validation_data = val_data)
 
 
+train()
 
-
-#loading the MNIST dataset
-(x_train,y_train),(x_test,y_test) = load_data()
-
-#reshaping the training and testing data
-x_train = x_train.reshape((x_train.shape[0],x_train.shape[1],x_train.shape[2],1))
-x_test  = x_test.reshape((x_test.shape[0],x_test.shape[1],x_test.shape[2],1))
-
-# normalizing the values of pixels of images
-x_train = x_train.astype('float32') / 255.0
-x_test = x_test.astype('float32') / 255.0
-
-#ploting the images
-fig = plt.figure(figsize=(5,3))
-for i in range(15):
-  ax = fig.add_subplot(2,10,i+1,xticks=[],yticks=[])
-  ax.imshow(np.squeeze(x_train[i]),cmap = 'gray')
-  ax.set_title(y_train[i])
-
-#determine the shape of the input image
-img_shape = x_train.shape[1:]
-print(img_shape)
-
-#Defining the model
-model = Sequential()
-# 32 indicates num of filters and (3,3) is the size of the filters
-
-
-for i in range(3):
-  model.add(Conv2D(32, (3, 3), input_shape=img_shape))
-  model.add(Activation('relu'))
-  # flatten the vector to 2 X 2
-  model.add(MaxPool2D(pool_size=(2, 2)))
-
-
-#dense layer
-model.add(Dense(500,activation='relu'))
-
-#output layer
-model.add(Dense(10,activation='softmax'))
-
-# model.summary()
-
-
-
-
-
-plot_model(model,'model.jpg',show_shapes=True)
-
-model.compile(optimizer='adam', loss='sparse_categorical_crossentropy',metrics=['accuracy'])
-x=model.fit(x_train,y_trian,epochs=10,batch_size=128,verbose=2,validation_split=0.1)
-
-loss,accuracy = model.evaluate(x_test,y_test,verbose=0)
-print(f'Accuracy:{accuracy*100}')
-
-image=x_train[10]
-plt.imshow(np.squeeze(image),cmap='gray')
-plt.show()
-
-image = image.reshape(1,image.shape[0],image.shape[1],image.shape[2])
-p = model.predict([image])
-print('Predicted: {}'.format(argmax(p)))
+#Trained successfully)
 
