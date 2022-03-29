@@ -94,4 +94,18 @@ def five():
 
 
 
-
+def six():
+    fOrg = 0.5
+    firstLayerFliterCount = 64
+    conv_layers = 5
+    activation = 'relu'
+    denseSize = 64
+    optimizer = 'adam'
+    num_epochs = 50
+    batchSize = 128
+    #
+    #
+    #
+    #with tf.device('/device:GPU:0'):
+    #
+    #Result --> ETA for 1 epoch -75s, training Acc = 0.47, testing accuracy = 0.21
