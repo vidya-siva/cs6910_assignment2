@@ -33,6 +33,7 @@ import pickle
 from PIL import Image
 import pathlib
 import wandb
+import timeit
 
 
 device_name = tf.test.gpu_device_name()
