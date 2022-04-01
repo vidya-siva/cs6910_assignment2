@@ -2,9 +2,9 @@
 
 
 def one():
-    fOrg = 0.5
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 500
     optimizer = 'adam'
@@ -16,9 +16,9 @@ def one():
     #Result --> ETA for 1 epoch - 17:45 Acc = 0.1(1epoch)
 
 def two():
-    fOrg = 0.5
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 32
     optimizer = 'adam'
@@ -30,9 +30,9 @@ def two():
     #Result --> ETA for 1 epoch - 17:05 Acc = 0.09(1epoch)
 
 def three():
-    fOrg = 0.5
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 32
     optimizer = 'adam'
@@ -44,9 +44,9 @@ def three():
     #Result --> ETA for 1 epoch - 1:15 overall Acc = 0.15
 
 def three():
-    fOrg = 0.5
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 32
     optimizer = 'adam'
@@ -61,9 +61,9 @@ def three():
 
 
 def four():
-    fOrg = 0.5
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 32
     optimizer = 'adam'
@@ -77,9 +77,9 @@ def four():
     #Result --> ETA for 1 epoch - 0:20 Acc = 0.67
 
 def five():
-    fOrg = 0.5
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 32
     optimizer = 'adam'

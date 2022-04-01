@@ -16,7 +16,7 @@ Original file is located at
 from numpy import unique, argmax
 from tensorflow.keras.datasets.mnist import load_data
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout, Activation
+from tensorflow.keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout, Activation, Rescaling
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.preprocessing import image_dataset_from_directory
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -26,12 +26,14 @@ import tensorflow as tf
 from matplotlib import pyplot
 import matplotlib.pyplot as plt
 import numpy as np
-import timeit
 import cv2 
 import os
 import random
 import pickle
 from PIL import Image
+import pathlib
+import wandb
+import timeit
 
 
 device_name = tf.test.gpu_device_name()
@@ -43,113 +45,182 @@ if device_name != '/device:GPU:0':
   raise SystemError('GPU device not found')
 
 
-# Code to check the cpu and gpu speeds 
-# def cpu():
-#   with tf.device('/cpu:0'):
-#     ranImg = tf.random.normal((100, 100, 100, 3))
-#     nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
-#     return tf.math.reduce_sum(nett)
+# Code to check the cpu and gpu speeds and to warm up
+def cpu():
+  with tf.device('/cpu:0'):
+    ranImg = tf.random.normal((100, 100, 100, 3))
+    nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
+    return tf.math.reduce_sum(nett)
 
-# def gpu():
-#   with tf.device('/device:GPU:0'):
-#     ranImg = tf.random.normal((100, 100, 100, 3))
-#     nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
-#     return tf.math.reduce_sum(nett)
+def gpu():
+  with tf.device('/device:GPU:0'):
+    ranImg = tf.random.normal((100, 100, 100, 3))
+    nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
+    return tf.math.reduce_sum(nett)
 
 # # We run each op once to warm up; see: https://stackoverflow.com/a/45067900
-# cpu()
-# gpu()
+cpu()
+gpu()
 
-# # Run the op several times.
-# print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
-#       '(batch x height x width x channel). Sum of ten runs.')
-# print('CPU (s):')
-# cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
-# print(cpu_time)
-# print('GPU (s):')
-# gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
-# print(gpu_time)
-# print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
+# Run the op several times.
+print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
+      '(batch x height x width x channel). Sum of ten runs.')
+print('CPU (s):')
+cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
+print(cpu_time)
+print('GPU (s):')
+gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
+print(gpu_time)
+print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
 
 path = os.getcwd()
 print(path)
 train_dir =path + "/inaturalist_12K/train"
 val_dir = path + "/inaturalist_12K/val"
 
-trainIt = tf.keras.preprocessing.image_dataset_from_directory(
+imgSize = (256, 256)
+batchSize = 32
+trainIt = tf.keras.utils.image_dataset_from_directory(
                       directory = train_dir,
                       labels = 'inferred',  
                       label_mode = 'categorical',
                       color_mode = 'rgb',
-                      batch_size = 32,
-                      image_size = (256, 256),
+                      batch_size = batchSize,
+                      image_size = imgSize,
                       shuffle = True,
-                      seed = 17,
+                      seed = 5,
                       validation_split = 0.2,
                       subset = 'training')
 
-valIt = tf.keras.preprocessing.image_dataset_from_directory(
-                      directory = val_dir,
+valIt = tf.keras.utils.image_dataset_from_directory(
+                      directory = train_dir,
                       labels = 'inferred',  
                       label_mode = 'categorical',
                       color_mode = 'rgb',
-                      batch_size = 32,
-                      image_size = (256, 256),
+                      batch_size = batchSize,
+                      image_size = imgSize,
                       shuffle = True,
-                      seed = 17,
+                      seed = 5,
                       validation_split = 0.2,
                       subset = 'validation')
+# Retaining 10 percent of train and validation data and discarding the rest
+len_train, len_val = len(train_data), len(val_data)
+train_data = trainIt.take(int(0.1*len_train))
+val_data = valIt.take(int(0.1*len_val))
 
-# Retaining 25 percent of train and validation data and discarding the rest
-train_data = trainIt.take(int(0.25*len(trainIt)))
-val_data = valIt.take(int(0.25*len(valIt)))
+
+trainGen = tf.keras.preprocessing.image.ImageDataGenerator(
+                rescale=1./255,
+                validation_split = 0.2,
+                shear_range=0.2,
+                zoom_range=0.2,
+                featurewise_center=False,  # set input mean to 0 over the dataset
+                samplewise_center=False,  # set each sample mean to 0
+                featurewise_std_normalization=False,  # divide inputs by std of the dataset
+                samplewise_std_normalization=False,  # divide each input by its std
+                zca_whitening=False,  # apply ZCA whitening
+                rotation_range=15,  # randomly rotate images in the range (degrees, 0 to 180)
+                width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+                height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+                horizontal_flip=True,  # randomly flip images
+                vertical_flip=False
+                )
+train_data_aug = trainGen.flow_from_directory(
+        train_dir,
+        subset='training',
+        target_size=imgSize,
+        batch_size=batchSize,
+        class_mode='categorical',
+        shuffle = True,
+        seed = 123)
+
+val_data_aug = trainGen.flow_from_directory(
+        train_dir,
+        subset='validation',
+        target_size=imgSize,
+        batch_size=batchSize,
+        class_mode='categorical',
+        shuffle = True,
+        seed = 123)
+
 
 print('Train data and Val Data has been set, Now lets use GPU and Define our Model')
 
-def train():
+def train(config=False):
   with tf.device('/device:GPU:0'):
+        
+    inputs = tf.keras.Input(shape = (256, 256, 3))
+    x = Rescaling(scale = 1.0/255)(inputs)
 
-    # Used this in out previous trails of framing the model, Commeting them for the future    
-    # inputs = tf.keras.Input(shape = (256, 256, 3))
-    # x = Rescaling(scale = 1.0/255)(inputs)
 
-    fOrg = 0.5
+    #Hardcoded for testing
+    filterOrganisation = 0.5
     firstLayerFliterCount = 64
-    conv_layers = 5
+    convLayers = 5
     activation = 'relu'
     denseSize = 32
     optimizer = 'adam'
     num_epochs = 50
-    filterSize = [int(firstLayerFliterCount*(fOrg**layer_num)) for layer_num in range(conv_layers)]
     kernelSize = 3
+    isDataAug = 0
 
-    #Defining Model Architecture
+    #Dynamic values for sweeping
+    if config:
+      print("Running the Model with the dynamic parameters ")
+      print(config)
+      config = wandb.init().config
+      wandb.run.name = 'firstLayerFliterCount_{}_filter_org_{}_kernelSize_{}_denseSize_{}'\
+                        .format(config.firstLayerFliterCount, config.filterOrganisation, config.kernelSize,config.denseSize)
+      filterOrganisation = config.filterOrganisation
+      firstLayerFliterCount = config.firstLayerFliterCount
+      convLayers = config.convLayers
+      activation = config.activation
+      denseSize = config.denseSize
+      optimizer = config.optimizer
+      num_epochs = config.num_epochs
+      kernelSize = config.kernelSize
+      isDataAug = config.isDataAug
+    filterSize = [int(firstLayerFliterCount*(filterOrganisation**layer_num)) for layer_num in range(convLayers)]
 
     model = Sequential()
-
+    # model.add(Rescaling(1./255))
     # Apply some convolution and pooling layers
-    for layer_num in range(conv_layers):
+    for layer_num in range(convLayers):
         model.add(Conv2D(filterSize[layer_num], (kernelSize, kernelSize), input_shape=(256,256,3)))
-        model.add(Activation(activation))
+        model.add(Activation('relu'))
         model.add(MaxPool2D(pool_size=(2, 2)))           
 
 
     #dense layer
     model.add(Flatten())
-    model.add(Dense(denseSize,activation=activation))
+    model.add(Dense(denseSize,activation='relu'))
 
     #output layer
     model.add(Dense(10,activation='softmax'))
 
-    print(model.summary())
+    # print(model.summary())
 
-    model.compile(optimizer=optimizer,
-                  loss = tf.keras.losses.CategoricalCrossentropy(name = 'loss'),
-                  metrics = [tf.keras.metrics.CategoricalAccuracy(name = 'acc')])
-    model_hist = model.fit(train_data, epochs = num_epochs,validation_data = val_data)
+    model.compile(
+        optimizer=optimizer,  # Optimizer
+        # Loss function to minimize
+        loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),#'categorical_crossentropy',
+        # List of metrics to monitor
+        metrics=['accuracy'],
+        )
+    
+    final_train_data =  train_data_aug if isDataAug else train_data
+    final_val_data =  val_data_aug if isDataAug else val_data
+    steps =  15 if isDataAug else len(train_data)
+    history = model.fit(
+                      final_train_data,
+                      steps_per_epoch = steps ,
+                      validation_data = final_val_data, 
+                      validation_steps = steps,
+                      epochs = num_epochs
+                      )
 
 
 train()
 
-#Trained successfully)
+#Trained successfully :)
 
