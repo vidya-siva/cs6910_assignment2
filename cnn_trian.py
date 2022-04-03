@@ -12,17 +12,19 @@ Original file is located at
 # drive.mount('/content/drive')
 
 
-# %tensorflow_version 2.x
 from numpy import unique, argmax
+# %tensorflow_version 2.x
+import tensorflow as tf
 from tensorflow.keras.datasets.mnist import load_data
 from tensorflow.keras import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout, Activation, Rescaling
+from tensorflow.keras.layers import Conv2D, MaxPool2D, Dense, Flatten, Dropout, Activation, Rescaling,BatchNormalization
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.preprocessing import image_dataset_from_directory
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 from tensorflow.keras import layers
-import tensorflow as tf
+from warmUp import *
+import timeit
 from matplotlib import pyplot
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,54 +35,42 @@ import pickle
 from PIL import Image
 import pathlib
 import wandb
-import timeit
 
-
-device_name = tf.test.gpu_device_name()
-if device_name != '/device:GPU:0':
-  print(
-      '\n\nThis error states that this notebook is not '
-      'configured to use a GPU. Change this in the notebook Settings via the Runtime type or  '
-      'command palette (cmd/ctrl-shift-P) or the Edit menu .\n\n')
-  raise SystemError('GPU device not found')
-
-
-# Code to check the cpu and gpu speeds and to warm up
-def cpu():
-  with tf.device('/cpu:0'):
-    ranImg = tf.random.normal((100, 100, 100, 3))
-    nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
-    return tf.math.reduce_sum(nett)
-
-def gpu():
-  with tf.device('/device:GPU:0'):
-    ranImg = tf.random.normal((100, 100, 100, 3))
-    nett = tf.keras.layers.Conv2D(32, 7)(ranImg)
-    return tf.math.reduce_sum(nett)
 
 # # We run each op once to warm up; see: https://stackoverflow.com/a/45067900
-cpu()
-gpu()
+# device_name = tf.test.gpu_device_name()
+# if device_name != '/device:GPU:0':
+#   print(
+#       '\n\nThis error states that this notebook is not '
+#       'configured to use a GPU. Change this in the notebook Settings via the Runtime type or  '
+#       'command palette (cmd/ctrl-shift-P) or the Edit menu .\n\n')
+#   raise SystemError('GPU device not found')
+# cpu()
+# gpu()
 
 # Run the op several times.
-print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
-      '(batch x height x width x channel). Sum of ten runs.')
-print('CPU (s):')
-cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
-print(cpu_time)
-print('GPU (s):')
-gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
-print(gpu_time)
-print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
+# print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
+#       '(batch x height x width x channel). Sum of ten runs.')
+# print('CPU (s):')
+# cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
+# print(cpu_time)
+# print('GPU (s):')
+# gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
+# print(gpu_time)
+# print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
 
-path = os.getcwd()
+path = os.path.dirname(os.getcwd())
 print(path)
 train_dir =path + "/inaturalist_12K/train"
 val_dir = path + "/inaturalist_12K/val"
 
-imgSize = (256, 256)
-batchSize = 32
-trainIt = tf.keras.utils.image_dataset_from_directory(
+imgHeight =  256#@param
+imgWidth =  256#@param
+
+imgSize = (imgHeight, imgWidth) 
+batchSize = 32 #@param
+
+train_data = tf.keras.utils.image_dataset_from_directory(
                       directory = train_dir,
                       labels = 'inferred',  
                       label_mode = 'categorical',
@@ -92,7 +82,7 @@ trainIt = tf.keras.utils.image_dataset_from_directory(
                       validation_split = 0.2,
                       subset = 'training')
 
-valIt = tf.keras.utils.image_dataset_from_directory(
+val_data = tf.keras.utils.image_dataset_from_directory(
                       directory = train_dir,
                       labels = 'inferred',  
                       label_mode = 'categorical',
@@ -103,13 +93,15 @@ valIt = tf.keras.utils.image_dataset_from_directory(
                       seed = 5,
                       validation_split = 0.2,
                       subset = 'validation')
+
+
 # Retaining 10 percent of train and validation data and discarding the rest
 len_train, len_val = len(train_data), len(val_data)
-train_data = trainIt.take(int(0.1*len_train))
-val_data = valIt.take(int(0.1*len_val))
+train_data = train_data.take(int(0.25*len_train))
+val_data = val_data.take(int(0.25*len_val))
 
 
-trainGen = tf.keras.preprocessing.image.ImageDataGenerator(
+train_datagen = tf.keras.preprocessing.image.ImageDataGenerator(
                 rescale=1./255,
                 validation_split = 0.2,
                 shear_range=0.2,
@@ -125,7 +117,9 @@ trainGen = tf.keras.preprocessing.image.ImageDataGenerator(
                 horizontal_flip=True,  # randomly flip images
                 vertical_flip=False
                 )
-train_data_aug = trainGen.flow_from_directory(
+
+
+train_data_aug = train_datagen.flow_from_directory(
         train_dir,
         subset='training',
         target_size=imgSize,
@@ -134,7 +128,7 @@ train_data_aug = trainGen.flow_from_directory(
         shuffle = True,
         seed = 123)
 
-val_data_aug = trainGen.flow_from_directory(
+val_data_aug = train_datagen.flow_from_directory(
         train_dir,
         subset='validation',
         target_size=imgSize,
@@ -143,50 +137,58 @@ val_data_aug = trainGen.flow_from_directory(
         shuffle = True,
         seed = 123)
 
+#Setting it to false to enable testing , Run the next cell to enable it and disable testing. 
+isSweep = False
+
 
 print('Train data and Val Data has been set, Now lets use GPU and Define our Model')
 
 def train(config=False):
   with tf.device('/device:GPU:0'):
-        
-    inputs = tf.keras.Input(shape = (256, 256, 3))
-    x = Rescaling(scale = 1.0/255)(inputs)
 
-
-    #Hardcoded for testing
-    filterOrganisation = 0.5
-    firstLayerFliterCount = 64
-    convLayers = 5
+    #Hardcoded for testing 
+    filterOrganisation = 0.5 
+    firstLayerFliterCount = 64 
+    convLayers = 5 
     activation = 'relu'
-    denseSize = 32
+    denseSize = 32 
     optimizer = 'adam'
     num_epochs = 50
     kernelSize = 3
     isDataAug = 0
+    batchNorm=1 
+    dropOut =0.2
+    if isSweep:
+      config = sweepConfig
+      if config:
+        print("Running the Model with the dynamic parameters ")
+        print(config)
+        wandb.init(config=config)
+        config = wandb.init().config
+        wandb.run.name = 'firstLayerFliterCount_{}_filter_org_{}_kernelSize_{}_denseSize_{}'\
+                          .format(config.firstLayerFliterCount, config.filterOrganisation, config.kernelSize,config.denseSize)
+        filterOrganisation = config.filterOrganisation
+        firstLayerFliterCount = config.firstLayerFliterCount
+        convLayers = config.convLayers
+        activation = config.activation
+        denseSize = config.denseSize
+        optimizer = config.optimizer
+        num_epochs = config.num_epochs
+        kernelSize = config.kernelSize
+        isDataAug = config.isDataAug
+        dropOut = config.dropOut
 
-    #Dynamic values for sweeping
-    if config:
-      print("Running the Model with the dynamic parameters ")
-      print(config)
-      config = wandb.init().config
-      wandb.run.name = 'firstLayerFliterCount_{}_filter_org_{}_kernelSize_{}_denseSize_{}'\
-                        .format(config.firstLayerFliterCount, config.filterOrganisation, config.kernelSize,config.denseSize)
-      filterOrganisation = config.filterOrganisation
-      firstLayerFliterCount = config.firstLayerFliterCount
-      convLayers = config.convLayers
-      activation = config.activation
-      denseSize = config.denseSize
-      optimizer = config.optimizer
-      num_epochs = config.num_epochs
-      kernelSize = config.kernelSize
-      isDataAug = config.isDataAug
+
     filterSize = [int(firstLayerFliterCount*(filterOrganisation**layer_num)) for layer_num in range(convLayers)]
 
     model = Sequential()
-    # model.add(Rescaling(1./255))
-    # Apply some convolution and pooling layers
+
+    # Applying some convolution and pooling layers
     for layer_num in range(convLayers):
-        model.add(Conv2D(filterSize[layer_num], (kernelSize, kernelSize), input_shape=(256,256,3)))
+        model.add(Conv2D(filterSize[layer_num], (kernelSize, kernelSize), input_shape=(imgHeight,imgWidth,3)))
+        #Normalisation
+        if batchNorm:
+          model.add(BatchNormalization(axis = -1))
         model.add(Activation('relu'))
         model.add(MaxPool2D(pool_size=(2, 2)))           
 
@@ -195,10 +197,18 @@ def train(config=False):
     model.add(Flatten())
     model.add(Dense(denseSize,activation='relu'))
 
+    #Normalisation
+    if batchNorm:
+      model.add(BatchNormalization(axis = -1))
+
+    #Dropout 
+    if dropOut > 0:
+      model.add(Dropout(rate = dropOut))
+
     #output layer
     model.add(Dense(10,activation='softmax'))
 
-    # print(model.summary())
+    print(model.summary())
 
     model.compile(
         optimizer=optimizer,  # Optimizer
@@ -210,17 +220,31 @@ def train(config=False):
     
     final_train_data =  train_data_aug if isDataAug else train_data
     final_val_data =  val_data_aug if isDataAug else val_data
-    steps =  15 if isDataAug else len(train_data)
-    history = model.fit(
+
+    #Hardcoded steps to 15 in order to speed up the training , but this leads to lesser accuracy. use len(train_data_aug) or train_data_aug.samples for maximum accuracy but it is expensive
+    esteps =  15 if isDataAug else len(train_data)
+    valSteps = 15 if isDataAug else len(val_data)
+
+    if isSweep:
+      history = model.fit(
+                        final_train_data,
+                        steps_per_epoch = esteps ,
+                        validation_data = final_val_data, 
+                        validation_steps = valSteps,
+                        epochs = num_epochs,
+                        callbacks = [wandb.keras.WandbCallback()]
+                        )
+    else:
+      history = model.fit(
                       final_train_data,
-                      steps_per_epoch = steps ,
+                      steps_per_epoch = esteps ,
                       validation_data = final_val_data, 
-                      validation_steps = steps,
+                      validation_steps = valSteps,
                       epochs = num_epochs
                       )
-
+    #Saving the Model for Future use.   
+    model.save(pathlib.Path('DLAssignment2PartAModel'))
 
 train()
-
-#Trained successfully :)
+# #Trained successfully :)
 
