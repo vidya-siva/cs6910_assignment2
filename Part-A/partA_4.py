@@ -8,6 +8,7 @@ Original file is located at
 """
 
 
+
 # Commented out IPython magic to ensure Python compatibility.
 #Importing all the packages
 from numpy import unique, argmax
@@ -32,10 +33,10 @@ import pickle
 from PIL import Image
 import pathlib,wandb
 
-model = tf.keras.models.load_model(pathlib.Path('/content/drive/MyDrive/DLAssignment2PartAModel'))
 
 path = os.path.dirname(os.getcwd())
 print(path)
+model = tf.keras.models.load_model(pathlib.Path(path + '/contents/DLAssignment2PartAModel'))
 train_dir =path + "/inaturalist_12K/train"
 testDataDir = path + "/inaturalist_12K/val"
 

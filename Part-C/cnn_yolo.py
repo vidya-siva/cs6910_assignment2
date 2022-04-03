@@ -7,9 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1jlsvAcwRQTUcTiI19qSwBOCktrpWNrYg
 """
 
-!pip install imageai
-!pip install tensorflow==2.8.0
-
 # Commented out IPython magic to ensure Python compatibility.
 # %tensorflow_version 2.x
 import tensorflow 
@@ -20,7 +17,7 @@ import os
 # execution_path = os.getcwd()
 #@markdown Mention the path of the directory.
 #@markdown  Make sure yolo.h5 is available in this directory. 
-execution_path = '/content/drive/MyDrive' #@param {type:'string'}
+execution_path = os.getcwd() #@param {type:'string'}
 
 
 def imageDetection():
@@ -46,3 +43,32 @@ def videoDection():
                                   , frames_per_second=20, log_progress=True)
   print(video_path)
 
+
+#@markdown Detect objects on an image.
+isImage = True #@param {type:"boolean"}
+#@markdown Mention the path of image.
+image_path = execution_path + '/content/traffic.jpg' #@param {type:"string"}
+#@markdown Detect objects on a video.
+
+isVideo = True #@param {type:"boolean"}
+#@markdown Mention the path of video.
+video_path = execution_path+ '/content/traffic.mp4' #@param {type:"string"}
+#@markdown Now run this Cell
+
+
+if isImage and isVideo:
+  print("Detecting the objects in the given image")
+  imageDetection(image_path)
+  print("Detecting the objects in the given Video")
+  print("This might take some time just sit back and relax")
+  print("We will do the detection while you have your coffee")
+  videoDection(video_path)
+
+elif isImage:
+  print("Detecting the objects in the given image")
+  imageDetection(image_path)
+elif isVideo:
+  print("Detecting the objects in the given Video")
+  print("This might take some time just sit back and relax")
+  print("We will do the detection while you have your coffee")
+  videoDection(video_path)
