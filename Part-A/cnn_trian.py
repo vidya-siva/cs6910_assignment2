@@ -23,41 +23,41 @@ from tensorflow.keras.preprocessing import image_dataset_from_directory
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.layers.experimental.preprocessing import Rescaling
 from tensorflow.keras import layers
-from warmUp import *
 import timeit
 from matplotlib import pyplot
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2 
-import os
+import os,sys
 import random
 import pickle
 from PIL import Image
 import pathlib
 import wandb
+sys.path.append(os.path.dirname(os.getcwd()))
+from warmUp import *
 
-
-# # We run each op once to warm up; see: https://stackoverflow.com/a/45067900
-# device_name = tf.test.gpu_device_name()
-# if device_name != '/device:GPU:0':
-#   print(
-#       '\n\nThis error states that this notebook is not '
-#       'configured to use a GPU. Change this in the notebook Settings via the Runtime type or  '
-#       'command palette (cmd/ctrl-shift-P) or the Edit menu .\n\n')
-#   raise SystemError('GPU device not found')
-# cpu()
-# gpu()
+# We run each op once to warm up; see: https://stackoverflow.com/a/45067900
+device_name = tf.test.gpu_device_name()
+if device_name != '/device:GPU:0':
+  print(
+      '\n\nThis error states that this notebook is not '
+      'configured to use a GPU. Change this in the notebook Settings via the Runtime type or  '
+      'command palette (cmd/ctrl-shift-P) or the Edit menu .\n\n')
+  raise SystemError('GPU device not found')
+cpu()
+gpu()
 
 # Run the op several times.
-# print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
-#       '(batch x height x width x channel). Sum of ten runs.')
-# print('CPU (s):')
-# cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
-# print(cpu_time)
-# print('GPU (s):')
-# gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
-# print(gpu_time)
-# print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
+print('Time (s) to convolve 32x7x7x3 filter over random 100x100x100x3 images '
+      '(batch x height x width x channel). Sum of ten runs.')
+print('CPU (s):')
+cpu_time = timeit.timeit('cpu()', number=10, setup="from __main__ import cpu")
+print(cpu_time)
+print('GPU (s):')
+gpu_time = timeit.timeit('gpu()', number=10, setup="from __main__ import gpu")
+print(gpu_time)
+print('GPU speedup over CPU: {}x'.format(int(cpu_time/gpu_time)))
 
 path = os.path.dirname(os.getcwd())
 print(path)
