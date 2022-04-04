@@ -15,7 +15,7 @@ python transferLearning.py
 ```
 
 
-Following is the sweep parameters used in transferLearning.ipynb file. you can use the colab link
+Following is the sweep parameters used in transferLearning.ipynb file. you can use the colab [link](https://colab.research.google.com/drive/1bFKf4cjHT0EoXD-2Z_7SgleythTpac5W?authuser=1#scrollTo=GjxdxEnsZU2y)
 
 ```
 sweepMethod ='bayes' #['grid','bayes','random']
