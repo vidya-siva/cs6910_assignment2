@@ -14,7 +14,7 @@ python cnn_train.py
 ```
 
 
-Following is the sweep parameters used in PartA_1-3.ipynb file. you can use the colab link
+Following is the sweep parameters used in PartA_1-3.ipynb file. you can use the colab [link](https://colab.research.google.com/drive/1ULbj1_DO_b9Jkok7Yk0Y_E5RofzO8riH?authuser=1#scrollTo=DOqHjP4pKvOQ)
 
 ```
 sweepMethod ='bayes'
