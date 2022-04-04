@@ -1,4 +1,5 @@
 # Question 1-3
+Git clone the whole repo cs6910_assignment2 for it to function
 
 please pip install the packages required.
 
