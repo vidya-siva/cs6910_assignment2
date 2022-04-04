@@ -19,3 +19,8 @@ to run the code, or use colab [link](https://colab.research.google.com/drive/1jl
 ```
 python cnn_yolo.py True imagepath True VideoPath
 ```
+
+
+#Demo Video
+
+Check the [Video](https://drive.google.com/file/d/1nTP6TKY2JUKomzlMlK3w1yg2nRXixkhc/view?usp=sharing)
