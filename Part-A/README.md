@@ -41,7 +41,7 @@ sweepConfig = {'name': sweepMethod + '-test-sweep',
 
 
 #question4
-to run the code, partA_4.py
+to run the code, or use colab [link](https://colab.research.google.com/drive/1oNRyg8qz0XpHL27uw5DhBqlKoBUTQ4u6?authuser=1)
 ```
 python partA_4.py
 ```
