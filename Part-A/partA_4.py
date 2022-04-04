@@ -36,7 +36,7 @@ import pathlib,wandb
 
 path = os.path.dirname(os.getcwd())
 print(path)
-model = tf.keras.models.load_model(pathlib.Path(path + '/contents/DLAssignment2PartAModel'))
+model = tf.keras.models.load_model(pathlib.Path(path + '/contents/DLAssignment2PartA_best_model'))
 train_dir =path + "/inaturalist_12K/train"
 testDataDir = path + "/inaturalist_12K/val"
 
