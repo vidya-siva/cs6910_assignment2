@@ -12,7 +12,7 @@ Original file is located at
 import tensorflow 
 from imageai.Detection.Custom import CustomObjectDetection, CustomVideoObjectDetection
 from imageai.Detection import ObjectDetection,VideoObjectDetection
-import os
+import os,sys
 
 # execution_path = os.getcwd()
 #@markdown Mention the path of the directory.
@@ -44,31 +44,39 @@ def videoDection():
   print(video_path)
 
 
-#@markdown Detect objects on an image.
-isImage = True #@param {type:"boolean"}
-#@markdown Mention the path of image.
-image_path = execution_path + '/content/traffic.jpg' #@param {type:"string"}
-#@markdown Detect objects on a video.
+def start(isImage,image_path,isVideo,video_path):
+  # #@markdown Detect objects on an image.
+  # isImage = True #@param {type:"boolean"}
+  # #@markdown Mention the path of image.
+  # image_path = execution_path + '/content/image1.jpg' #@param {type:"string"}
+  # #@markdown Detect objects on a video.
 
-isVideo = True #@param {type:"boolean"}
-#@markdown Mention the path of video.
-video_path = execution_path+ '/content/traffic.mp4' #@param {type:"string"}
-#@markdown Now run this Cell
+  # isVideo = True #@param {type:"boolean"}
+  # #@markdown Mention the path of video.
+  # video_path = execution_path+ '/content/video1.mp4' #@param {type:"string"}
+  # #@markdown Now run this Cell
 
 
-if isImage and isVideo:
-  print("Detecting the objects in the given image")
-  imageDetection(image_path)
-  print("Detecting the objects in the given Video")
-  print("This might take some time just sit back and relax")
-  print("We will do the detection while you have your coffee")
-  videoDection(video_path)
+  if isImage and isVideo:
+    print("Detecting the objects in the given image")
+    imageDetection(image_path)
+    print("Detecting the objects in the given Video")
+    print("This might take some time just sit back and relax")
+    print("We will do the detection while you have your coffee")
+    videoDection(video_path)
 
-elif isImage:
-  print("Detecting the objects in the given image")
-  imageDetection(image_path)
-elif isVideo:
-  print("Detecting the objects in the given Video")
-  print("This might take some time just sit back and relax")
-  print("We will do the detection while you have your coffee")
-  videoDection(video_path)
+  elif isImage:
+    print("Detecting the objects in the given image")
+    imageDetection(image_path)
+  elif isVideo:
+    print("Detecting the objects in the given Video")
+    print("This might take some time just sit back and relax")
+    print("We will do the detection while you have your coffee")
+    videoDection(video_path)
+if __name__ == "__main__":
+	
+  isImage = sys.argv[1]
+  image_path = sys.argv[2]
+  isVideo = sys.argv[3]
+  video_path = sys.argv[4]
+  start(isImage,image_path,isVideo,video_path)
